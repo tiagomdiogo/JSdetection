@@ -19,7 +19,7 @@
           },
           "property": {
             "type": "Identifier",
-            "name": "URL"
+            "name": "url"
           }
         }
       }
@@ -27,25 +27,16 @@
     {
       "type": "ExpressionStatement",
       "expression": {
-        "type": "CallExpression",
-        "callee": {
-          "type": "MemberExpression",
-          "computed": false,
-          "object": {
-            "type": "Identifier",
-            "name": "document"
-          },
-          "property": {
-            "type": "Identifier",
-            "name": "write"
-          }
+        "type": "AssignmentExpression",
+        "operator": "=",
+        "left": {
+          "type": "Identifier",
+          "name": "a"
         },
-        "arguments": [
-          {
-            "type": "Identifier",
-            "name": "t"
-          }
-        ]
+        "right": {
+          "type": "Identifier",
+          "name": "t"
+        }
       }
     }
   ],
