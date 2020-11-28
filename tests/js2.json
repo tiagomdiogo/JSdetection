@@ -8,7 +8,7 @@
         "operator": "=",
         "left": {
           "type": "Identifier",
-          "name": "t"
+          "name": "a"
         },
         "right": {
           "type": "MemberExpression",
@@ -27,16 +27,17 @@
     {
       "type": "ExpressionStatement",
       "expression": {
-        "type": "AssignmentExpression",
-        "operator": "=",
-        "left": {
+        "type": "CallExpression",
+        "callee": {
           "type": "Identifier",
-          "name": "a"
+          "name": "sink"
         },
-        "right": {
-          "type": "Identifier",
-          "name": "t"
-        }
+        "arguments": [
+          {
+            "type": "Identifier",
+            "name": "a"
+          }
+        ]
       }
     }
   ],

@@ -4,8 +4,18 @@
   "sanitizers": ["escape", "sanitize"],
   "sinks": ["exec", "execSync", "spawn", "spawnSync", "execFile", "execFileSync"]},
 
-  {"vulnerability":"DOM XSS",
-  "sources":["document.referrer", "document.url", "document.location"],
-  "sanitizers":["encodeURI"],
-  "sinks":["eval", "document.write", "document.innerHTML", "setAttribute"]}
+  {
+    "vulnerability": "DOM XSS",
+    "sources": [ "document.referrer", "document.url", "document.location" ],
+    "sanitizers": [ "encodeURI" ],
+    "sinks": [ "eval", "document.write", "document.innerHTML", "setAttribute" ]
+  },
+
+  {
+    "vulnerability": "XSS XSS",
+    "sources": [ "c", "b", "a", "source" ],
+    "sanitizers": [ "e", "t" ],
+    "sinks": [ "eas", "asd", "z", "e" , "sink"]
+  }
+
 ]
