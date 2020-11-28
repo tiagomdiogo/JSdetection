@@ -11,16 +11,21 @@
           "name": "a"
         },
         "right": {
-          "type": "MemberExpression",
-          "computed": false,
-          "object": {
+          "type": "CallExpression",
+          "callee": {
             "type": "Identifier",
-            "name": "document"
+            "name": "sink"
           },
-          "property": {
-            "type": "Identifier",
-            "name": "url"
-          }
+          "arguments": [
+            {
+              "type": "CallExpression",
+              "callee": {
+                "type": "Identifier",
+                "name": "source"
+              },
+              "arguments": []
+            }
+          ]
         }
       }
     },

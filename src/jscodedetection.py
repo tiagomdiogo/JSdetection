@@ -13,21 +13,43 @@ class VulnDetection:
         result += "." + self.analyse_statement(expr["property"], 0)
         return result
 
+    def whilestatement(self, expr):
+        self.analyse_statement(expr["test"], 0)
+        for i in range(10):
+            self.analyse_statement(expr["body"], 0)
+
     def ifstatement(self, expr):
-        pass
+        test = self.analyse_statement(expr["test"], 0 )
+        self.analyse_statement(expr["consequent"], 0)
+        if expr["alternate"] is not None:
+            self.analyse_statement(expr["alternate"],0)
+    
+    def blockstatement(self, expr):
+        for stmt in expr["body"]:
+            self.analyse_statement(stmt, 0)
 
     def assignmentexpression(self, expr):
         var_name = self.analyse_statement(expr["left"], 1)
-        right_side = self.analyse_statement(expr["right"], 1).split(" ")  
+        right_side = self.analyse_statement(expr["right"], 1).split(" ")
+
+        if len(right_side) == 1 and right_side[0] == '' and var_name in self.tainted:
+            if len(self.vuln_detected[var_name]["sinks"]) < 1:
+                del self.vuln_detected[var_name]
+                self.tainted.remove(var_name)
+
         for x in right_side:
             if x in self.tainted:
                 self.tainted.append(var_name)
-                self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[x]["Vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":[], "sinks": []}            
+                if var_name not in self.vuln_detected:
+                    self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[x]["Vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":[], "sinks": []}            
             else: 
                 for i in range(len(self.vuln)):
                     if x.lower() in self.vuln[i]["sources"]:    
                         self.tainted.append(var_name)
-                        self.vuln_detected[var_name] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
+                        if var_name not in self.vuln_detected:
+                            self.vuln_detected[var_name] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
+                        else:
+                            self.vuln_detected[var_name]["sources"].append(x)  
              
 
     def callexpression(self, expr, fromAssigmnemt):
@@ -39,15 +61,17 @@ class VulnDetection:
             a = self.analyse_statement(args[z], 0)
             args_list.append(a)
 
-        for i in range(len(self.vuln)):   
-            if callee.lower() in self.vuln[i]["sinks"]:    
+        for i in range(len(self.vuln)):  
+            if callee.lower() in self.vuln[i]["sinks"]:  
                 for arg_name in args_list:
                     for arg in arg_name.split(" "):
                         if arg in self.tainted:
                             if self.vuln_detected[arg]["Vulnerability"] == self.vuln[i]["vulnerability"]:
-                                self.vuln_detected[arg]["sinks"].append(callee.lower())
+                                if callee.lower() not in self.vuln_detected[arg]["sinks"]:                                
+                                    self.vuln_detected[arg]["sinks"].append(callee.lower())
                         elif self.vuln[i]["vulnerability"] in self.vuln_detected:
-                            self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"].append(callee.lower())
+                            if callee.lower() not in self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"]:
+                                self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"].append(callee.lower())
             if fromAssigmnemt == 0:                    
                 if callee.lower() in self.vuln[i]["sources"]:
                         self.vuln_detected[self.vuln[i]["vulnerability"]] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [callee.lower()], "sanitizers":[], "sinks": []}                                   
@@ -77,7 +101,7 @@ class VulnDetection:
 
     def analyse_statement(self,node, fromAssigmnemt):
         node_type = node["type"]
-
+        
         if node_type == "ExpressionStatement":
             return self.expressionstatement(node)     
         elif node_type == "AssignmentExpression":
@@ -91,7 +115,11 @@ class VulnDetection:
         elif node_type == "CallExpression":
             return self.callexpression(node, fromAssigmnemt)
         elif node_type == "IfStatement":
-            return self.ifstatement(node)    
+            return self.ifstatement(node) 
+        elif node_type == "BlockStatement":
+            return self.blockstatement(node)
+        elif node_type == "WhileStatement":
+            return self.whilestatement(node)           
         elif node_type == "Literal":
             return self.literal(node)
 
