@@ -13,9 +13,10 @@
 
   {
     "vulnerability": "XSS XSS",
-    "sources": [ "b", "t", "source", "asda", "sd"],
-    "sanitizers": [ "e", "sxzs", "t"],
-    "sinks": [ "c", "e", "d", "z", "f", "s", "h", "x" ]
+    "sources": [ "b", "d", "sasd", "tasd", "sdasd"],
+    "sanitizers": [ "sasd", "s", "d"],
+    "sinks": [ "<", "casd", "w", "sasd", "z", "h", "zasd", "xasd" ]
   }
+
 
 ]

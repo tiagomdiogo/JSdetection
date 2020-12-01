@@ -9,83 +9,98 @@ class VulnDetection:
         self.vuln_detected = {}
 
     def memberexpression(self, expr):
-        result = self.analyse_statement(expr["object"], 0)
-        result += "." + self.analyse_statement(expr["property"], 0)
+        result = self.analyse_statement(expr["object"], 0, [])
+        result += "." + self.analyse_statement(expr["property"], 0, [])
         return result
 
     def whilestatement(self, expr):
-        self.analyse_statement(expr["test"], 0)
-        for i in range(10):
-            self.analyse_statement(expr["body"], 0)
+        test = self.analyse_statement(expr["test"], 0, []).split(" ")
+        implicit =[]
+        for arg in test:
+            if arg in self.tainted:
+                implicit.append(arg)
+        for i in range(len(expr["body"]) + 2):
+            self.analyse_statement(expr["body"], 0, implicit)
 
     def ifstatement(self, expr):
-        test = self.analyse_statement(expr["test"], 0 )
-        self.analyse_statement(expr["consequent"], 0)
+        test = self.analyse_statement(expr["test"], 0, []).split(" ")
+        implicit =[]
+        for arg in test:
+            if arg in self.tainted:
+                implicit.append(arg)
+
+        self.analyse_statement(expr["consequent"], 0, implicit)
         if expr["alternate"] is not None:
-            self.analyse_statement(expr["alternate"],0)
+            self.analyse_statement(expr["alternate"],0, implicit)
     
-    def blockstatement(self, expr):
+    def blockstatement(self, expr, implicit):
         for stmt in expr["body"]:
-            self.analyse_statement(stmt, 0)
+            self.analyse_statement(stmt, 0, implicit)
 
-    def assignmentexpression(self, expr):
-        var_name = self.analyse_statement(expr["left"], 1)
-        right_side = self.analyse_statement(expr["right"], 1).split(" ")
+    def assignmentexpression(self, expr, implicitFlow):
+        var_name = self.analyse_statement(expr["left"], 1, [])
+        right_side = self.analyse_statement(expr["right"], 1, []).split(" ")
 
-        if len(right_side) == 1 and right_side[0] == '' and var_name in self.tainted:
-            if len(self.vuln_detected[var_name]["sinks"]) < 1:
-                del self.vuln_detected[var_name]
-                self.tainted.remove(var_name)
+        if len(implicitFlow) > 0:
+            if var_name not in self.tainted and var_name not in self.vuln_detected:
+                self.tainted.append(var_name)
+                self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[implicitFlow[0]]["Vulnerability"], "sources": self.vuln_detected[implicitFlow[0]]["sources"], "sanitizers":self.vuln_detected[implicitFlow[0]]["sanitizers"], "sinks": []}
 
         for x in right_side:
             if x in self.tainted:
-                self.tainted.append(var_name)
-                if var_name not in self.vuln_detected:
-                    self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[x]["Vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":[], "sinks": []}            
+                if var_name not in self.tainted:
+                    self.tainted.append(var_name)
+                    if var_name not in self.vuln_detected:
+                        self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[x]["Vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":self.vuln_detected[x]["sanitizers"], "sinks": []}            
             else: 
                 for i in range(len(self.vuln)):
-                    if x.lower() in self.vuln[i]["sources"]:    
-                        self.tainted.append(var_name)
-                        if var_name not in self.vuln_detected:
-                            self.vuln_detected[var_name] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
+                    if x.lower() in self.vuln[i]["sources"]:
+                        if var_name not in self.tainted:  
+                            self.tainted.append(var_name)
+                            if var_name not in self.vuln_detected:  
+                                self.vuln_detected[var_name] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
                         else:
-                            self.vuln_detected[var_name]["sources"].append(x)  
+                            if x not in self.vuln_detected[var_name]["sources"]:
+                                self.vuln_detected[var_name]["sources"].append(x)        
              
 
     def callexpression(self, expr, fromAssigmnemt):
-        callee = self.analyse_statement(expr["callee"],0 )
+        callee = self.analyse_statement(expr["callee"],0, [])
 
         args = expr["arguments"]
         args_list = []              
         for z in range(len(args)):
-            a = self.analyse_statement(args[z], 0)
+            a = self.analyse_statement(args[z], 0, [])
             args_list.append(a)
 
         for i in range(len(self.vuln)):  
-            if callee.lower() in self.vuln[i]["sinks"]:  
-                for arg_name in args_list:
-                    for arg in arg_name.split(" "):
-                        if arg in self.tainted:
-                            if self.vuln_detected[arg]["Vulnerability"] == self.vuln[i]["vulnerability"]:
-                                if callee.lower() not in self.vuln_detected[arg]["sinks"]:                                
-                                    self.vuln_detected[arg]["sinks"].append(callee.lower())
-                        elif self.vuln[i]["vulnerability"] in self.vuln_detected:
-                            if callee.lower() not in self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"]:
+            for arg_name in args_list:
+                for arg in arg_name.split(" "):
+                    if arg in self.tainted:
+                        if self.vuln_detected[arg]["Vulnerability"] == self.vuln[i]["vulnerability"]:
+                            if callee.lower() not in self.vuln_detected[arg]["sinks"] and callee.lower() in self.vuln[i]["sinks"]:                                
+                                self.vuln_detected[arg]["sinks"].append(callee.lower())
+                            elif callee.lower() not in self.vuln_detected[arg]["sanitizers"] and callee.lower() in self.vuln[i]["sanitizers"]:                                
+                                    self.vuln_detected[arg]["sanitizers"].append(callee.lower())
+                    else:
+                        if self.vuln[i]["vulnerability"] in self.vuln_detected:
+                            if callee.lower() not in self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"] and callee.lower() in self.vuln[i]["sinks"]:
                                 self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"].append(callee.lower())
-            if fromAssigmnemt == 0:                    
-                if callee.lower() in self.vuln[i]["sources"]:
-                        self.vuln_detected[self.vuln[i]["vulnerability"]] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [callee.lower()], "sanitizers":[], "sinks": []}                                   
-                if callee.lower() in self.vuln[i]["sanitizers"]:
+            if fromAssigmnemt == 0:                  
+                if callee.lower() in self.vuln[i]["sources"] and self.vuln[i]["vulnerability"] not in self.vuln_detected:
+                    self.vuln_detected[self.vuln[i]["vulnerability"]] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [callee.lower()], "sanitizers":[], "sinks": []}                                                
+                else:
+                    if callee.lower() in self.vuln[i]["sanitizers"]:
                         if self.vuln[i]["vulnerability"] in self.vuln_detected:
                             self.vuln_detected[self.vuln[i]["vulnerability"]]["sanitizers"].append(callee.lower())
-
+            
         if fromAssigmnemt == 0:
             return callee
         else:
             return callee + " " + " ".join(args_list)    
 
-    def expressionstatement(self, expr):
-        self.analyse_statement(expr["expression"], 0)
+    def expressionstatement(self, expr, implicit):
+        self.analyse_statement(expr["expression"], 0, implicit)
 
     def identifier(self, expr):
         return expr["name"]
@@ -94,18 +109,18 @@ class VulnDetection:
         return ""
 
     def binaryexpression(self, expr):
-        left = self.analyse_statement(expr["left"],0 )
-        left +=  " " + self.analyse_statement(expr["right"], 0)
+        left = self.analyse_statement(expr["left"],0, [])
+        left +=  " " + self.analyse_statement(expr["right"], 0 ,[])
         return left
 
 
-    def analyse_statement(self,node, fromAssigmnemt):
+    def analyse_statement(self,node, fromAssigmnemt, implicitFlow):
         node_type = node["type"]
-        
+
         if node_type == "ExpressionStatement":
-            return self.expressionstatement(node)     
+            return self.expressionstatement(node , implicitFlow)     
         elif node_type == "AssignmentExpression":
-            return self.assignmentexpression(node)
+            return self.assignmentexpression(node, implicitFlow)
         elif node_type == "Identifier":
             return self.identifier(node)
         elif node_type == "BinaryExpression":
@@ -117,7 +132,7 @@ class VulnDetection:
         elif node_type == "IfStatement":
             return self.ifstatement(node) 
         elif node_type == "BlockStatement":
-            return self.blockstatement(node)
+            return self.blockstatement(node, implicitFlow)
         elif node_type == "WhileStatement":
             return self.whilestatement(node)           
         elif node_type == "Literal":
@@ -134,7 +149,7 @@ class VulnDetection:
         js_to_analyse = self.json_parser(jsCode)
 
         for i in range(len(js_to_analyse["body"])):
-            self.analyse_statement(js_to_analyse["body"][i], 0)
+            self.analyse_statement(js_to_analyse["body"][i], 0, [])
 
         return self.vuln_detected    
 
