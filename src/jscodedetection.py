@@ -44,21 +44,21 @@ class VulnDetection:
         if len(implicitFlow) > 0:
             if var_name not in self.tainted and var_name not in self.vuln_detected:
                 self.tainted.append(var_name)
-                self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[implicitFlow[0]]["Vulnerability"], "sources": self.vuln_detected[implicitFlow[0]]["sources"], "sanitizers":self.vuln_detected[implicitFlow[0]]["sanitizers"], "sinks": []}
+                self.vuln_detected[var_name] = {"vulnerability": self.vuln_detected[implicitFlow[0]]["vulnerability"], "sources": self.vuln_detected[implicitFlow[0]]["sources"], "sanitizers":self.vuln_detected[implicitFlow[0]]["sanitizers"], "sinks": []}
 
         for x in right_side:
             if x in self.tainted:
                 if var_name not in self.tainted:
                     self.tainted.append(var_name)
                     if var_name not in self.vuln_detected:
-                        self.vuln_detected[var_name] = {"Vulnerability": self.vuln_detected[x]["Vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":self.vuln_detected[x]["sanitizers"], "sinks": []}            
+                        self.vuln_detected[var_name] = {"vulnerability": self.vuln_detected[x]["vulnerability"], "sources": self.vuln_detected[x]["sources"], "sanitizers":self.vuln_detected[x]["sanitizers"], "sinks": []}            
             else: 
                 for i in range(len(self.vuln)):
                     if x.lower() in self.vuln[i]["sources"]:
                         if var_name not in self.tainted:  
                             self.tainted.append(var_name)
                             if var_name not in self.vuln_detected:  
-                                self.vuln_detected[var_name] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
+                                self.vuln_detected[var_name] = {"vulnerability": self.vuln[i]["vulnerability"], "sources": [x], "sanitizers":[], "sinks": []}
                         else:
                             if x not in self.vuln_detected[var_name]["sources"]:
                                 self.vuln_detected[var_name]["sources"].append(x)        
@@ -77,7 +77,7 @@ class VulnDetection:
             for arg_name in args_list:
                 for arg in arg_name.split(" "):
                     if arg in self.tainted:
-                        if self.vuln_detected[arg]["Vulnerability"] == self.vuln[i]["vulnerability"]:
+                        if self.vuln_detected[arg]["vulnerability"] == self.vuln[i]["vulnerability"]:
                             if callee.lower() not in self.vuln_detected[arg]["sinks"] and callee.lower() in self.vuln[i]["sinks"]:                                
                                 self.vuln_detected[arg]["sinks"].append(callee.lower())
                             elif callee.lower() not in self.vuln_detected[arg]["sanitizers"] and callee.lower() in self.vuln[i]["sanitizers"]:                                
@@ -88,7 +88,7 @@ class VulnDetection:
                                 self.vuln_detected[self.vuln[i]["vulnerability"]]["sinks"].append(callee.lower())
             if fromAssigmnemt == 0:                  
                 if callee.lower() in self.vuln[i]["sources"] and self.vuln[i]["vulnerability"] not in self.vuln_detected:
-                    self.vuln_detected[self.vuln[i]["vulnerability"]] = {"Vulnerability": self.vuln[i]["vulnerability"], "sources": [callee.lower()], "sanitizers":[], "sinks": []}                                                
+                    self.vuln_detected[self.vuln[i]["vulnerability"]] = {"vulnerability": self.vuln[i]["vulnerability"], "sources": [callee.lower()], "sanitizers":[], "sinks": []}                                                
                 else:
                     if callee.lower() in self.vuln[i]["sanitizers"]:
                         if self.vuln[i]["vulnerability"] in self.vuln_detected:
@@ -158,10 +158,14 @@ if __name__ == "__main__":
         sys.exit("Please insert the following args <JSCODE> <VULN_PATTERN>")
     vuln = VulnDetection()    
     result = vuln.analyse(sys.argv[1], sys.argv[2])
-    #print(result)
+    result_array = []
     for key in result:
         if len(result[key]["sources"]) > 0 and len(result[key]["sinks"]):
-            print(result[key])
+            result_array.append(result[key])
 
-    #todo output the result in a json file
+    output = sys.argv[1].split(".json")[0] + ".output.json"  
+    f = open(output, 'w')
+    print(result_array)
+    json.dump(result_array, f)
+    f.close()      
 
